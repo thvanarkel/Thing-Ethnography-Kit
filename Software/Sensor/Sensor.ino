@@ -33,5 +33,5 @@ void loop() {
   
   xbee.send(zbTx);
 
-  delay(1000);
+  delay(80);
 }
