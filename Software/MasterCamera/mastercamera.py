@@ -1,5 +1,6 @@
 from time import sleep
 from digi.xbee.devices import XBeeDevice
+from flask import Flask, render_template
 
 device = XBeeDevice('/dev/ttyAMA0', 9600)
 device.open();
@@ -13,16 +14,19 @@ def data_received_callback(xbee_message):
     global sensorValue
     sensorValue = int.from_bytes(xbee_message.data, byteorder='big')
     print ("Received data from %s: %s" % (address, sensorValue))
-    
+
 device.add_data_received_callback(data_received_callback)
 
-from flask import Flask
+
 app = Flask(__name__)
 
 @app.route("/")
 def hello():
     global sensorValue
-    return "The latest reading is: %s"%(sensorValue)
+    templateData = {
+        'sensorValue' : sensorValue
+    }
+    return render_template('main.html', **templateData)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
