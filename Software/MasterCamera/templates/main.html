@@ -34,7 +34,7 @@
         <tr>
           <th scope="row">13A20040BBEFC9</th>
           <td>Sensor</td>
-          <td>267</td>
+          <td>{{ sensorValue }}</td>
         </tr>
         <tr>
           <th scope="row">13A200408B7976</th>
@@ -43,17 +43,13 @@
         </tr>
       </tbody>
     </table>
-    <h4 class="mt-3"><i class="fas fa-camera"></i> Recently captured</h4>
+    <h4 class="mt-3"><i class="fas fa-camera"></i> Recently captured #{{ photoCount }}</h4>
     <div class="card-deck">
+	{% for url in photoURLs %}
       <div class="card">
-        <img class="card-img" src="..." alt="Card image">
+        <img class="card-img" src="{{ url }}" alt="Card image">
       </div>
-      <div class="card">
-        <img class="card-img" src="..." alt="Card image">
-      </div>
-      <div class="card">
-        <img class="card-img" src="..." alt="Card image">
-      </div>
+      {% endfor %}
 
 
     </div>
