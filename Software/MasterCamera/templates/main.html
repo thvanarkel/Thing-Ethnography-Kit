@@ -9,7 +9,9 @@
 		column-count:4;
 	}
   </style>
+<!--
   <meta http-equiv="refresh" content="2">
+-->
 </head>
 
 <body>
@@ -50,8 +52,18 @@
 
     </div>
   </div>
-
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+  <script>
+	var ws = new WebSocket('ws://localhost:8888');
+	ws.onopen = function() {
+		console.log('Connection established');
+		ws.send('Hello from client');
+	};
+	
+	ws.onmessage = function (m) {
+		console.log('message from server', m.data);
+	}
+  </script>
 </body>
 
 </html>
