@@ -7,6 +7,8 @@ var port = 8888;
 
 var wss = require('ws').Server;
 
+var network;
+
 var server = http.createServer(function(req, res) {
   fs.readFile(__dirname + '/templates/main.html', function(err, data) {
     if (err) {
@@ -29,16 +31,23 @@ var ws = new wss({
 
 ws.on('connection', function(s) {
 	console.log('New connection');
+	
+	var m = {
+			type: 'network',
+			payload: {
+				nodes: network
+			}
+		}
+	ws.broadcast(JSON.stringify(m));
+	
 	s.on('message', function(m) {
 		console.log('received: %s', m);
-		s.send('reply from server : ' + m);
+		
 	});
-	s.send('something');
 });
 
 ws.broadcast = function broadcast(data) {
 	ws.clients.forEach(function each(client) {
-		console.log(wss.OPEN);
 		if (client.readyState === 1) {
 			client.send(data);
 		}
@@ -54,13 +63,26 @@ var xbee = new Xbee({ device: '/dev/ttyAMA0', baud: 9600 }, function() {
         if (err) return console.err(err);
         console.log("my NI is '" + data.ni + "'");
         console.log('scanning for nodes on the network...');
-        xbee.discover_nodes(function(err, nodes) {
-            if (err) return console.err(err);
-            console.log('%d nodes found:', nodes.length);
-            console.dir(nodes);
-        });
+        scanNetwork();
     });
 });
+
+var scanNetwork = function() {
+	xbee.discover_nodes(function(err, nodes) {
+		if (err) return console.err(err);
+		console.log('%d nodes found:', nodes.length);
+		console.dir(nodes);
+		
+		var m = {
+			type: 'network',
+			payload: {
+				nodes: nodes
+			}
+		}
+		ws.broadcast(JSON.stringify(m));
+		network = nodes;
+	});
+}
 
 xbee.on('error', function(err) {
     console.error(err);
@@ -68,7 +90,18 @@ xbee.on('error', function(err) {
 });
 
 xbee.on('message_received', function(data) {
-	console.log('received a message!');
-	console.dir(data);
-	ws.broadcast('{' + data.addr + ', ' + String((data.data[0] * 256) + data.data[1]) + '}');
+	//console.log('received a message!');
+	//console.dir(data);
+	var v = (data.data[0] * 256) + data.data[1];
+	var m = { type: 'update', 
+		   payload: { address: data.addr, 
+						value: v
+					}
+			};
+	ws.broadcast(JSON.stringify(m));
+});
+
+xbee.on('xbee_joined', function(data) {
+	console.log("Rescan network");
+	scanNetwork();
 });
