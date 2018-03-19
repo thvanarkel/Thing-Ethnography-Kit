@@ -1,5 +1,6 @@
 var http = require('http');
 var fs = require('fs');
+var url = require('url');
 var Xbee = require('digimesh');
 
 var ipaddress = 'localhost';
@@ -15,8 +16,18 @@ var server = http.createServer(function(req, res) {
       res.writeHead(404, {'Content-Type': 'text/html'});
       return res.end("404 Not Found");
     }
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.write(data);
+    var request = url.parse(req.url, true);
+    console.log(request.pathname);
+    if (request.pathname.includes('/images/image')) {
+		console.log('load image');
+		var img = fs.readFileSync('./static' + request.pathname);
+		res.writeHead(200, {'Content-Type' : 'image/jpg'});
+		res.end(img, 'binary');
+	} else {
+		res.writeHead(200, {'Content-Type': 'text/html'});
+		res.write(data);
+	}
+    
     return res.end();
   })
 });
@@ -42,7 +53,9 @@ ws.on('connection', function(s) {
 	
 	s.on('message', function(m) {
 		console.log('received: %s', m);
-		
+		if (m === 'reload') {
+			scanNetwork();
+		}
 	});
 });
 
@@ -62,12 +75,12 @@ var xbee = new Xbee({ device: '/dev/ttyAMA0', baud: 9600 }, function() {
     xbee.get_ni_string(function(err, data) {
         if (err) return console.err(err);
         console.log("my NI is '" + data.ni + "'");
-        console.log('scanning for nodes on the network...');
         scanNetwork();
     });
 });
 
 var scanNetwork = function() {
+	console.log('scanning for nodes on the network...');
 	xbee.discover_nodes(function(err, nodes) {
 		if (err) return console.err(err);
 		console.log('%d nodes found:', nodes.length);
