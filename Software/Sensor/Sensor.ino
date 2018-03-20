@@ -1,7 +1,7 @@
 #include <XBee.h>
 
 const bool ANALOG = true;
-const bool PIN = A0; 
+const int PIN = A0; 
 
 XBee xbee = XBee();
 
@@ -16,7 +16,8 @@ int value = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  xbee.setSerial(Serial);
+//  xbee.setSerial(Serial);
+  pinMode(PIN, INPUT);
 }
 
 void loop() {
@@ -30,7 +31,7 @@ void loop() {
     payload[0] = value & 0xff;
     payload[1] = value & 0xff;
   }
-  
+  value = analogRead(PIN);
   xbee.send(zbTx);
 
   delay(500);
