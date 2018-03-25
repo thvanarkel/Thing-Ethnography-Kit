@@ -16,8 +16,7 @@ int value = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-//  xbee.setSerial(Serial);
-  pinMode(PIN, INPUT);
+  xbee.setSerial(Serial);
 }
 
 void loop() {
@@ -31,7 +30,7 @@ void loop() {
     payload[0] = value & 0xff;
     payload[1] = value & 0xff;
   }
-  value = analogRead(PIN);
+  
   xbee.send(zbTx);
 
   delay(500);
