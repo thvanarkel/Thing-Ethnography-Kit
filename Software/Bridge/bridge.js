@@ -3,10 +3,22 @@ var fs = require('fs');
 var url = require('url');
 var Xbee = require('digimesh');
 
-var ipaddress = 'localhost';
+var ipaddress = '145.94.152.146';
 var port = 8888;
 
 var wss = require('ws').Server;
+
+var photosTaken = 0;
+var takingPicture = false;
+var PiCamera = require('pi-camera');
+var camera = new PiCamera({
+	mode: 'photo',
+	output: __dirname + '/static/images/image%d.jpg',
+	width: 1920,
+	height: 1280,
+	timeout: 100,
+	nopreview: true
+});
 
 var network;
 
@@ -50,11 +62,19 @@ ws.on('connection', function(s) {
 			}
 		}
 	ws.broadcast(JSON.stringify(m));
-	
+	var m = {
+				type: 'snapshot',
+				payload: {
+					photosTaken: photosTaken
+				}
+			}
+	ws.broadcast(JSON.stringify(m));
 	s.on('message', function(m) {
 		console.log('received: %s', m);
 		if (m === 'reload') {
 			scanNetwork();
+		} else if (m === 'frame') {
+			takeSnapshot();
 		}
 	});
 });
@@ -97,14 +117,38 @@ var scanNetwork = function() {
 	});
 }
 
+var takeSnapshot = function() {
+	if (takingPicture) {
+		return;
+	}
+	takingPicture = true;
+	camera.set('output', __dirname + '/static/images/image' + photosTaken + '.jpg');
+	camera.snap()
+		.then((result) => {
+			photosTaken++;
+			console.log('Photo taken');
+			var m = {
+				type: 'frame',
+				payload: {
+					photosTaken: photosTaken
+				}
+			}
+			ws.broadcast(JSON.stringify(m));
+			takingPicture = false;
+		})
+		.catch((error) => {
+			console.error(error);
+		});
+}
+
 xbee.on('error', function(err) {
     console.error(err);
     process.exit(1);
 });
 
 xbee.on('message_received', function(data) {
-	//console.log('received a message!');
-	//console.dir(data);
+	console.log('received a message!');
+	console.dir(data);
 	var v = (data.data[0] * 256) + data.data[1];
 	var m = { type: 'update', 
 		   payload: { address: data.addr, 
