@@ -15,7 +15,7 @@ let camera = new PiCamera({
 });
 
 var ipaddress = 'localhost';
-var port = 8888;
+var port = 8080;
 
 var cameraID;
 var sessionID = 1;
@@ -89,6 +89,7 @@ xbee.on('message_received', function(data) {
 	console.dir(data);
 	var session = data.data[0];
 	var condition = data.data[1];
+	numFrames = data.data[2] * 256 + data.data[3];
 	if (session != sessionID) {
 		sessionID = session;
 		db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, false);
