@@ -251,7 +251,11 @@ var captureFrame = function(camera, condition) {
 		if (camera.address === xbee.address) {
 			takeFrame(sessionID, camera.address, condition);
 		} else {
-			data = [sessionID, condition, numFrames];
+			data = [sessionID, 
+					condition,
+					(numFrames & 0x0000ff00) >> 8,
+					(numFrames & 0x000000ff)];
+			console.log(new Buffer(data));
 			xbee.send_message({
                     data: new Buffer(data),
                     addr: camera.address,
@@ -268,8 +272,8 @@ var evaluateConditions = function() {
 	var sensor2 = sensorWithID('0013a20040eae3c4');
 	var sensor3 = sensorWithID('0013a20040bbefc9');
 	
-	var camera;
-	var condition;
+	var camera = null;
+	var condition = null;
 	
 	if (sensor1 && sensor2 && sensor3) {
 		if(sensor2.value > 500) {
@@ -277,7 +281,16 @@ var evaluateConditions = function() {
 			camera = cameras[1];
 			condition = 1;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
-				captureFrame(cameras[1], 1);
+				captureFrame(camera, condition);
+				camera.lastTaken = Date.now();
+				numFrames++;
+			}
+		}
+		if (sensor1.value > 500) {
+			camera = cameras[0];
+			condition = 2;
+			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
+				captureFrame(camera, condition);
 				camera.lastTaken = Date.now();
 				numFrames++;
 			}
