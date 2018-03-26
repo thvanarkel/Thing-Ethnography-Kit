@@ -27,7 +27,7 @@ var hasCamera = true;
 
 var cameraID;
 var cameraTimeout = 2000;
-var sessionID = 1;
+var sessionID = 3;
 var numFrames = 0;
 
 var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, false);
@@ -199,13 +199,13 @@ var takeFrame = function(session, cameraID, condition) {
 		console.dir(result);
 		console.log('snapped picture');
 		db.push('/frame' + numFrames, {camera: cameraID, timestamp: time.format('YYYY/MM/DD HH:mm:ss'), condition: condition});
-		var m = {
-				type: 'frame',
-				payload: {
-					photosTaken: photosTaken
-				}
-			}
-		ws.broadcast(JSON.stringify(m));
+		//var m = {
+				//type: 'frame',
+				//payload: {
+					//photosTaken: photosTaken
+				//}
+			//}
+		//ws.broadcast(JSON.stringify(m));
 	})
 	.catch((error) => {
 		console.error(error);
@@ -278,7 +278,7 @@ var evaluateConditions = function() {
 	if (sensor1 && sensor2 && sensor3) {
 		if(sensor2.value > 500) {
 			console.log('is hirgh');
-			camera = cameras[1];
+			camera = cameras[0];
 			condition = 1;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
 				captureFrame(camera, condition);
@@ -286,9 +286,18 @@ var evaluateConditions = function() {
 				numFrames++;
 			}
 		}
-		if (sensor1.value > 500) {
-			camera = cameras[0];
+		if (sensor2.value > 500) {
+			camera = cameras[1];
 			condition = 2;
+			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
+				captureFrame(camera, condition);
+				camera.lastTaken = Date.now();
+				numFrames++;
+			}
+		}
+		if (sensor3.value > 500) {
+			camera = cameras[1];
+			condition = 3;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
 				captureFrame(camera, condition);
 				camera.lastTaken = Date.now();
