@@ -2,13 +2,41 @@ var http = require('http');
 var fs = require('fs');
 var url = require('url');
 var Xbee = require('digimesh');
+let moment = require('moment');
+let JSONdb = require('node-json-db');
 
-var ipaddress = 'localhost';
+var ipaddress = '145.94.152.146';
 var port = 8888;
 
 var wss = require('ws').Server;
 
+var photosTaken = 0;
+var takingPicture = false;
+var PiCamera = require('pi-camera');
+let camera = new PiCamera({
+	mode: 'photo',
+	output: __dirname + '/test.jpg',
+	width: 1296,
+	height: 972,
+	timeout: 100,
+	ifx: 'blur',
+	nopreview: true
+});
+
+var hasCamera = true;
+
+var cameraID;
+var cameraTimeout = 20000;
+var sessionID = 6;
+var numFrames = 0;
+
+var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, true);
+
+
+
 var network;
+var cameras = [];
+var sensors = [];
 
 var server = http.createServer(function(req, res) {
   fs.readFile(__dirname + '/templates/main.html', function(err, data) {
@@ -50,11 +78,19 @@ ws.on('connection', function(s) {
 			}
 		}
 	ws.broadcast(JSON.stringify(m));
-	
+	var m = {
+				type: 'snapshot',
+				payload: {
+					photosTaken: photosTaken
+				}
+			}
+	ws.broadcast(JSON.stringify(m));
 	s.on('message', function(m) {
 		console.log('received: %s', m);
 		if (m === 'reload') {
 			scanNetwork();
+		} else if (m === 'frame') {
+			takeSnapshot();
 		}
 	});
 });
@@ -94,6 +130,85 @@ var scanNetwork = function() {
 		}
 		ws.broadcast(JSON.stringify(m));
 		network = nodes;
+		cameras = [];
+		sensors = [];
+		if (hasCamera) {
+			cameras.push({address:xbee.address, lastTaken:(Date.now() - cameraTimeout)});
+		}
+		
+		for (let node of nodes) {
+			if (node.ni_string.indexOf('Camera') != -1) {
+				var aCamera = { address:node.addr, lastTaken:(Date.now() - cameraTimeout) };
+				cameras.push(aCamera);
+			} else if (node.ni_string.indexOf('Sensor') != -1) {
+				var aSensor = { address:node.addr, value:0 };
+				sensors.push(aSensor);
+			}
+		}
+		console.log(cameras);
+		
+	});
+}
+
+var takeSnapshot = function() {
+	if (takingPicture) {
+		return;
+	}
+	takingPicture = true;
+	camera.set('output', __dirname + '/static/images/image' + photosTaken + '.jpg');
+	camera.snap()
+		.then((result) => {
+			photosTaken++;
+			console.log('Photo taken');
+			var m = {
+				type: 'frame',
+				payload: {
+					photosTaken: photosTaken
+				}
+			}
+			ws.broadcast(JSON.stringify(m));
+			takingPicture = false;
+		})
+		.catch((error) => {
+			console.error(error);
+		});
+}
+
+var makePath = function(path) {
+	fs.mkdir(path, function(err) {
+		if (err) {
+			if (err.code = 'EEXIST');
+		} else {
+			console.log('made dir');
+		}		
+	});
+}
+
+var takeFrame = function(session, cameraID, condition) {
+	var path = '/home/pi/Documents/TE' + session;
+	makePath(path);
+	path += '/frames';
+	makePath(path);
+    var time = moment();
+    var time_format = time.format('YYYY.MM.DD.HH.mm.ss');
+    var filename = '/frame' + numFrames + '.' + time_format + '.jpg';
+    path += filename;
+    camera.set('output', path);
+    camera.snap()
+	.then((result) => {
+		console.dir(result);
+		console.log('snapped picture');
+		db.push('/frame' + numFrames, {camera: cameraID, timestamp: time.format('YYYY/MM/DD HH:mm:ss'), condition: condition});
+		//var m = {
+				//type: 'frame',
+				//payload: {
+					//photosTaken: photosTaken
+				//}
+			//}
+		//ws.broadcast(JSON.stringify(m));
+	})
+	.catch((error) => {
+		console.error(error);
 	});
 }
 
@@ -111,10 +226,87 @@ xbee.on('message_received', function(data) {
 						value: v
 					}
 			};
+	for (let sensor of sensors) {
+		if (sensor.address === data.addr) {
+			sensor.value = v;
+		}
+	}
 	ws.broadcast(JSON.stringify(m));
+	evaluateConditions();
 });
 
 xbee.on('xbee_joined', function(data) {
 	console.log("Rescan network");
 	scanNetwork();
 });
+
+var sensorWithID = function(id) {
+	return sensors.filter(function(s) {
+		return s.address == id;
+	})[0];
+}
+
+var captureFrame = function(camera, condition) {
+	if (hasCamera) {
+		if (camera.address === xbee.address) {
+			takeFrame(sessionID, camera.address, condition);
+		} else {
+			data = [sessionID, 
+					condition,
+					(numFrames & 0x0000ff00) >> 8,
+					(numFrames & 0x000000ff)];
+			console.log(new Buffer(data));
+			xbee.send_message({
+                    data: new Buffer(data),
+                    addr: camera.address,
+                    broadcast: false
+            });
+         }
+		numFrames++;
+	}
+	
+}
+
+var evaluateConditions = function() {
+	var sensor1 = sensorWithID('0013a200408b7976');
+	var sensor2 = sensorWithID('0013a20040eae3c4');
+	var sensor3 = sensorWithID('0013a20040bbefc9');
+	
+	var camera = null;
+	var condition = null;
+	
+	if (sensor1 && sensor2 && sensor3) {
+		if(sensor1.value > 300) {
+			console.log('is hirgh');
+			camera = cameras[0];
+			condition = 1;
+			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
+				captureFrame(camera, condition);
+				camera.lastTaken = Date.now();
+			}
+		}
+		if (sensor2.value > 250) {
+			camera = cameras[1];
+			condition = 2;
+			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
+				captureFrame(camera, condition);
+				camera.lastTaken = Date.now();
+			}
+		}
+		if (sensor3.value > 200) {
+			camera = cameras[1];
+			condition = 3;
+			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
+				captureFrame(camera, condition);
+				camera.lastTaken = Date.now();
+				
+			}
+		}
+	}
+	
+	//if (sensor
+	
+	//if (sensors.find(s => s.address === '0013a200408b7976').value > 500) {
+		//console.log('is high');
+	//}
+}
