@@ -21,7 +21,7 @@ var cameraID;
 var sessionID = 1;
 var numFrames = 0;
 
-var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, false);
+var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, true);
 
 var server = http.createServer(function(req, res) {
 	res.writeHead(200);
@@ -63,12 +63,7 @@ var takeFrame = function(session, condition) {
 	path += '/frames';
 	makePath(path);
     var time = moment();
-    var time_format = time.format('YYYY.MM.DD.HH.mm.ss');
-    var filename = '/frame' + cameraID + '.' + time_format + '.jpg';
-    path += filename;
-    camera.set('output', path);
-    camera.snap()
-	.then((result) => {
+    .then((result) => {
 		console.dir(result);
 		console.log('snapped picture');
 		db.push('/frame' + numFrames, {camera: cameraID, timestamp: time.format('YYYY/MM/DD HH:mm:ss'), condition: condition});
