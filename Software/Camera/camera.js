@@ -44,7 +44,7 @@ var xbee = new Xbee({ device: '/dev/ttyAMA0', baud: 9600 }, function() {
         console.log("my NI is '" + data.ni + "'");
     });
     cameraID = xbee.address;
-    console.log(xbee.address); 
+    console.log(xbee.address);
 });
 
 var makePath = function(path) {
@@ -53,7 +53,7 @@ var makePath = function(path) {
 			if (err.code = 'EEXIST');
 		} else {
 			console.log('made dir');
-		}		
+		}
 	});
 }
 
@@ -63,6 +63,10 @@ var takeFrame = function(session, condition) {
 	path += '/frames';
 	makePath(path);
     var time = moment();
+		var time_format = time.format('YYYY.MM.DD.HH.mm.ss');
+    var filename = '/frame' + cameraID + '.' + time_format + '.jpg';
+    path += filename;
+    camera.set('output', path);
     camera.snap()
     .then((result) => {
 		console.dir(result);
