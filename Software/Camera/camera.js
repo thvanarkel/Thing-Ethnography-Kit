@@ -63,6 +63,7 @@ var takeFrame = function(session, condition) {
 	path += '/frames';
 	makePath(path);
     var time = moment();
+    camera.snap()
     .then((result) => {
 		console.dir(result);
 		console.log('snapped picture');
