@@ -26,11 +26,11 @@ let camera = new PiCamera({
 var hasCamera = true;
 
 var cameraID;
-var cameraTimeout = 2000;
-var sessionID = 3;
+var cameraTimeout = 20000;
+var sessionID = 6;
 var numFrames = 0;
 
-var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, false);
+var db = new JSONdb('/home/pi/Documents/TE' + sessionID + '/database', true, true);
 
 
 
@@ -191,7 +191,7 @@ var takeFrame = function(session, cameraID, condition) {
 	makePath(path);
     var time = moment();
     var time_format = time.format('YYYY.MM.DD.HH.mm.ss');
-    var filename = '/frame' + cameraID + '.' + time_format + '.jpg';
+    var filename = '/frame' + numFrames + '.' + time_format + '.jpg';
     path += filename;
     camera.set('output', path);
     camera.snap()
@@ -262,7 +262,7 @@ var captureFrame = function(camera, condition) {
                     broadcast: false
             });
          }
-			
+		numFrames++;
 	}
 	
 }
@@ -276,32 +276,30 @@ var evaluateConditions = function() {
 	var condition = null;
 	
 	if (sensor1 && sensor2 && sensor3) {
-		if(sensor2.value > 500) {
+		if(sensor1.value > 300) {
 			console.log('is hirgh');
 			camera = cameras[0];
 			condition = 1;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
 				captureFrame(camera, condition);
 				camera.lastTaken = Date.now();
-				numFrames++;
 			}
 		}
-		if (sensor2.value > 500) {
+		if (sensor2.value > 250) {
 			camera = cameras[1];
 			condition = 2;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
 				captureFrame(camera, condition);
 				camera.lastTaken = Date.now();
-				numFrames++;
 			}
 		}
-		if (sensor3.value > 500) {
+		if (sensor3.value > 200) {
 			camera = cameras[1];
 			condition = 3;
 			if (Date.now() > (camera.lastTaken + cameraTimeout)) {
 				captureFrame(camera, condition);
 				camera.lastTaken = Date.now();
-				numFrames++;
+				
 			}
 		}
 	}
