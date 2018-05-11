@@ -18,8 +18,7 @@ let camera = new PiCamera({
   output: __dirname + '/test.jpg',
   width: 1296,
   height: 972,
-  timeout: 100,
-  ifx: 'blur',
+  t: 100,
   nopreview: true
 });
 
