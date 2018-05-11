@@ -5,7 +5,7 @@ var Xbee = require('digimesh');
 let moment = require('moment');
 let JSONdb = require('node-json-db');
 
-var ipaddress = '145.94.152.146';
+var ipaddress = '192.168.1.144';
 var port = 8888;
 
 var wss = require('ws').Server;
@@ -202,7 +202,7 @@ var makePath = function(path) {
   });
 }
 
-var takeFrame = function(session, cameraID, condition) {
+var takeFrame = function(session, cameraID, condition, sensors) {
   var path = '/home/pi/Documents/TE' + session;
   makePath(path);
   path += '/frames';
@@ -219,7 +219,8 @@ var takeFrame = function(session, cameraID, condition) {
       db.push('/frame' + numFrames, {
         camera: cameraID,
         timestamp: time.format('YYYY/MM/DD HH:mm:ss'),
-        condition: condition
+        condition: condition,
+				sensors: sensors
       });
       //var m = {
       //type: 'frame',
@@ -273,7 +274,7 @@ var sensorWithID = function(id) {
 var captureFrame = function(camera, condition) {
   if (hasCamera) {
     if (camera.address === xbee.address) {
-      takeFrame(sessionID, camera.address, condition);
+      takeFrame(sessionID, camera.address, condition, sensors);
     } else {
       data = [sessionID,
         condition,
@@ -300,7 +301,7 @@ var evaluateConditions = function() {
   var camera = null;
   var condition = null;
 
-  if (sensor1 && sensor2 && sensor3) {
+  if (sensor1) {
     if (sensor1.value > 300) {
       console.log('is hirgh');
       camera = cameras[0];
@@ -310,16 +311,20 @@ var evaluateConditions = function() {
         camera.lastTaken = Date.now();
       }
     }
+	}
+	if (sensor2) {
     if (sensor2.value > 250) {
-      camera = cameras[1];
+      camera = cameras[0];
       condition = 2;
       if (Date.now() > (camera.lastTaken + cameraTimeout)) {
         captureFrame(camera, condition);
         camera.lastTaken = Date.now();
       }
     }
+	}
+	if (sensor3) {
     if (sensor3.value > 200) {
-      camera = cameras[1];
+      camera = cameras[0];
       condition = 3;
       if (Date.now() > (camera.lastTaken + cameraTimeout)) {
         captureFrame(camera, condition);
